@@ -1,7 +1,7 @@
 FROM python:3.10-slim
 
 # Instala o FFmpeg, essencial para processar áudio
-RUN apt-get update && apt-get install -y ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg ca-certificates
 
 # Copia os arquivos do seu bot para o servidor
 WORKDIR /app
