@@ -22,7 +22,7 @@ ytdl_format_options = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '0.0.0.0'
+    'source_address': '0.0.0.0',
     'extractor_args': {'youtube': ['player_client=android,web']}
 }
 
