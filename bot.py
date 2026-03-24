@@ -23,6 +23,7 @@ ytdl_format_options = {
     'no_warnings': True,
     'default_search': 'auto',
     'source_address': '0.0.0.0'
+    'cookiefile': '/etc/secrets/cookies.txt'
 }
 
 ffmpeg_options = {
