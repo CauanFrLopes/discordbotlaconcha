@@ -1,20 +1,18 @@
 import discord
 from discord.ext import commands
-from keep_alive import keep_alive
 import yt_dlp
 import asyncio
 import os
+from keep_alive import keep_alive
 
-# Configuração de Intents (necessário para ler mensagens)
+# Configuração de Intents
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Configurações do yt-dlp e FFmpeg
+# Configurações otimizadas para o SoundCloud (Evita bloqueios)
 ytdl_format_options = {
     'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
@@ -22,8 +20,7 @@ ytdl_format_options = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '0.0.0.0',
-    'extractor_args': {'youtube': ['player_client=android,web']}
+    'source_address': '0.0.0.0'
 }
 
 ffmpeg_options = {
@@ -35,52 +32,47 @@ ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
 @bot.event
 async def on_ready():
-    print(f'Bot logado como {bot.user}')
+    print(f'✅ Bot logado como {bot.user}')
+    print('✅ Servidor de áudio pronto!')
 
-@bot.command(name='play', help='Toca uma música do YouTube')
+@bot.command(name='play')
 async def play(ctx, *, search: str):
     if not ctx.message.author.voice:
-        await ctx.send("Você precisa estar em um canal de voz para tocar música!")
+        await ctx.send("❌ Entra num canal de voz primeiro!")
         return
 
     channel = ctx.message.author.voice.channel
-    
-    # Entra no canal de voz se não estiver
     voice_client = ctx.voice_client
     if not voice_client:
         voice_client = await channel.connect()
 
-    await ctx.send(f"Procurando por: **{search}**...")
+    await ctx.send(f"🔍 Procurando: **{search}**...")
 
-    # Extrai o áudio sem baixar o vídeo
+    # AQUI ESTÁ O TRUQUE: scsearch (SoundCloud) em vez de ytsearch
     loop = asyncio.get_event_loop()
-    data = await loop.run_in_executor(None, lambda: ytdl.extract_info(f"ytsearch:{search}", download=False))
-    
-    if 'entries' in data:
-        data = data['entries'][0]
+    try:
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(f"scsearch:{search}", download=False))
+        if 'entries' in data:
+            data = data['entries'][0]
 
-    song_url = data['url']
-    title = data['title']
+        song_url = data['url']
+        title = data['title']
 
-    # Toca a música
-    if not voice_client.is_playing():
-        voice_client.play(discord.FFmpegPCMAudio(song_url, **ffmpeg_options))
-        await ctx.send(f"🎶 Tocando agora: **{title}**")
-    else:
-        await ctx.send("O bot já está tocando uma música! (Sistema de fila pode ser adicionado depois).")
+        if not voice_client.is_playing():
+            voice_client.play(discord.FFmpegPCMAudio(song_url, **ffmpeg_options))
+            await ctx.send(f"🎶 Tocando agora: **{title}**")
+        else:
+            await ctx.send("⚠️ Já estou a tocar uma música!")
+    except Exception as e:
+        await ctx.send(f"❌ Erro ao processar áudio: {e}")
 
-@bot.command(name='stop', help='Para a música e sai do canal')
+@bot.command(name='stop')
 async def stop(ctx):
     voice_client = ctx.voice_client
     if voice_client and voice_client.is_connected():
         await voice_client.disconnect()
-        await ctx.send("Desconectado. Até a próxima!")
-    else:
-        await ctx.send("Eu não estou em um canal de voz.")
+        await ctx.send("👋 Desconectado!")
 
-# Inicia o servidor web de mentira
 keep_alive()
-
-# Pega o token das variáveis de ambiente
 TOKEN = os.getenv('DISCORD_TOKEN')
 bot.run(TOKEN)
